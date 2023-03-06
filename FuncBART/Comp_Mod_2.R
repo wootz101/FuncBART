@@ -12,14 +12,16 @@ library(fda)
 
 
 # fUnction that creates exponentially distributed partition of unerlying T space
-randomInterval <- function(numInts, theta){
-  ints = rexp(numInts,theta)
-  ints = ints/(sum(ints))
-  ints2 = cumsum(ints)
-  ints2 = c(0, ints2)
 
-  return(ints2)
+randomInterval_normal <- function(numInts, int_sd){
+  tempInts= c(rep(0,numInts),1)
+  for(i in 2:(numInts)){
+    tempInts[i] = abs(rnorm(1, mean = (i-1)/numInts, sd=int_sd))
+  }
+  tempInts = sort(tempInts/max(tempInts))
+  return(tempInts)
 }
+
 
 
 #Gets the AverageValue
@@ -42,7 +44,8 @@ m_MV_ScalarExtraction <- function(m, numInts, fp, theta=1, coeffs, basis){
   ngrps = nrow(coeffs)/fp
 
   for (j in 1:m) {
-    temp = randomInterval(numInts,theta)
+    temp = randomInterval_normal(numInts,theta)
+    print(temp)
     temp_scalar = NULL
     #For loop for each functional predictor
     for (k in 0:(fp-1)) {
@@ -199,7 +202,8 @@ m=200
 num_predictors=13
 num_intervals = 6
 
-s_data_test = m_MV_ScalarExtraction(m, num_intervals, num_predictors, 1, sD2coefs, f_c1$basis)
+s_data_test = m_MV_ScalarExtraction(m, num_intervals, num_predictors, 1/num_intervals^2, sD2coefs, f_c1$basis)
+
 
 X=s_data_test[[1]][,,1]
 s_data_test[[2]]

@@ -188,13 +188,13 @@ Rcpp::List functionalBART_res(Rcpp::List& x,
       Rcpp::NumericMatrix Xinfo(Rcpp::as<Rcpp::NumericMatrix>(iXinfo[0]));
       xinfo _xi;
       _xi.resize(p);
-      for(size_t i=0;i<p;i++) {
-        _xi[i].resize(numcut[i]);
+      for(size_t k=0;k<p;k++) {
+        _xi[k].resize(numcut[k]);
         //printf("numcut %i", numcut[i], " ' \n'");
         //printf("\n");
         //Rcpp::IntegerVector cutpts(Xinfo[i]);
-        for(size_t j=0;j<numcut[i];j++)
-          _xi[i][j]=Xinfo(i, j);
+        for(size_t j=0;j<numcut[k];j++)
+          _xi[k][j]=Xinfo(k, j);
       }
 
       m_bart[i].setxinfo(_xi);
@@ -227,11 +227,18 @@ Rcpp::List functionalBART_res(Rcpp::List& x,
 
 // begin ITERATIVE LEARNING
 Rprintf("START MCMC: \n");
+
+
   for(int it=0; it<(iter+burn); it++){
+
+
 
     //Friendly output status
 
-    if(it%100==0) printf("done %zu (out of %lu)\n",it,iter+burn);
+    if(it%100==0) {
+      printf("done %zu (out of %lu)\n",it,iter+burn);
+      //Rprintf(" GLOBAL: %i", global_nv[0], " \n");
+      }
 
     //n-length vector adding all tree values
     std::vector<double> all_fhat(n, 0.);
@@ -241,6 +248,26 @@ Rprintf("START MCMC: \n");
     // residual for sigma
     double rs_tot{0.0};
 
+    std::vector<size_t> global_nv (p,0);
+
+    for(int i=0; i < m_total; i++){
+      // Get global NV count first
+      std::vector<size_t> temp_nv (p,0);
+      temp_nv = m_bart[i].getnv();
+      for(size_t j=0; j<p; j++){
+        global_nv[j] += temp_nv[j];
+      }
+    }
+
+    if(it%100==0) {
+      //printf("done %zu (out of %lu)\n",it,iter+burn);
+      Rprintf(" GLOBAL: %i", global_nv[0], " \n");
+      Rprintf(" GLOBAL: %i", global_nv[1], " \n");
+      Rprintf(" GLOBAL: %i", global_nv[2], " \n");
+      Rprintf(  "    \n");
+    }
+
+
     for(int i=0; i < n; i++){
       // Get Residuals first
       for(size_t j=0; j<m_total; j++){
@@ -249,12 +276,17 @@ Rprintf("START MCMC: \n");
     }
 
 
+
+    //START TREE LOOP
     for(int i=0; i < m_total; i++){
       // Get Residuals first
       for(size_t j=0; j<n; j++){
         restemp=(iz[j] - all_fhat[j]);
-        r_vector[j]= restemp;
-      }
+        r_vector[j]= restemp; }
+
+
+      // Get Global Count from all trees first
+
 
       //Rprintf(" observation: %i", n-1, " \n");
       //Rprintf(" fitted values: %.4f" , all_fhat[n-1], " \n");
@@ -282,8 +314,8 @@ Rprintf("START MCMC: \n");
       }
 
 
-     // m_bart[i].draw(funcP, intvls, 1.0, gen, r_vector);
-      m_bart[i].draw(funcP, intvls, sig_update, gen_fp, gen_int, r_vector);
+      m_bart[i].draw_global(funcP, intvls, 1.0, gen, gen_fp, gen_int, r_vector, global_nv);
+      //m_bart[i].draw(funcP, intvls, sig_update, gen, gen_fp, gen_int, r_vector);
 
 
       if(it>(burn-1)){
@@ -347,7 +379,7 @@ Rprintf("START MCMC: \n");
         for(size_t j=0;j<n;j++) yhats(i,j) =m_bart[i].f(j)/m_total;
         Rprintf("TREE NUMBER: \n");
         Rprintf("%i", i+1);
-        m_bart[i].pr();
+        //m_bart[i].pr();
 
         //MAKE PREDICTION ON TEST SET
 

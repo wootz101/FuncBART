@@ -382,7 +382,7 @@ void draw_s(std::vector<size_t>& nv, std::vector<double>& lpv, double& theta, rn
   size_t p=nv.size();
 // Now draw s, the vector of splitting probabilities
   std::vector<double> _theta(p);
-  for(size_t j=0;j<p;j++) _theta[j]= theta/(double)p+(double)nv[j];
+  for(size_t j=0;j<p;j++) _theta[j]= theta/(double)p +(double)nv[j];
   //gen.set_alpha(_theta);
   lpv=gen.log_dirichlet(_theta);
 }

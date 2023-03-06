@@ -1,4 +1,4 @@
-
+# For the purpose of using Multivariate syntheic Functional Data
 
 ### Clear Console ###
 cat("\014")
@@ -12,144 +12,87 @@ library(tidyverse)
 data("simData2") # 2 classes, 100 obervation per class, 200 obs total
 
 
-# fUnction that creates exponentially distributed partition of unerlying T space
-randomInterval <- function(numInts, theta){
-  ints = rexp(numInts,theta)
-  ints = ints/(sum(ints))
-  ints2 = cumsum(ints)
-  ints2 = c(0, ints2)
+class_1 = simData2[[1]]$coefs[,1:100]
+#class_1$basis = simData2[[1]]$basis
 
-  return(ints2)
+class_2 = simData2[[1]]$coefs[,101:200]
+
+
+#True signal of class!
+
+
+
+
+#Generate a 1000 for each class
+
+truth_1 = c(3,3,2,0,3,3,3,0,0,1)
+#plot(truth_1)
+
+truth_2 = c(1,-3,2,0,3,3,3,0,0,1)
+#plot(truth_2)
+
+c1_s_data = NULL
+c2_s_data = NULL
+for(i in 1:1000){
+  c1_s_data = cbind(c1_s_data, truth_1 + rnorm(10,sd=1/2) )
+  c2_s_data = cbind(c2_s_data, truth_2 + rnorm(10,sd=1/2) )
 }
+sim_data_1 = cbind(c1_s_data, c2_s_data)
 
-#random interval creation that jitters breakpoints of intervals
+####################
+# Simulated Data
+bb = create.bspline.basis(rangeval = c(0,1), norder=4)
 
-numInts=6
+par(mfrow=c(2,2))
+plot(Data2fd(c1_s_data, basis=bb ))
+plot(Data2fd(c2_s_data, basis=bb ))
 
 
+truth_1 = c(1,3,2,0,3,3,3,0,0,-1)
+#plot(truth_1)
 
-randomInterval_normal <- function(numInts, int_sd){
-  tempInts= c(rep(0,numInts),1)
-  for(i in 2:(numInts)){
-    tempInts[i] = abs(rnorm(1, mean = (i-1)/numInts, sd=int_sd))
-  }
-  tempInts = sort(tempInts/max(tempInts))
-  return(tempInts)
+truth_2 = c(1,3,2,0,3,-3,3,0,0,1)
+#plot(truth_2)
+
+c1_s_data = NULL
+c2_s_data = NULL
+for(i in 1:1000){
+  c1_s_data = cbind(c1_s_data, truth_1 + rnorm(10,sd=.5) )
+  c2_s_data = cbind(c2_s_data, truth_2 + rnorm(10,sd=.5) )
 }
-randomInterval_normal(numInts, .1)
+sim_data_2 = cbind(c1_s_data, c2_s_data)
+############
+# See simulated data
+plot(Data2fd(c1_s_data, basis=bb ))
+plot(Data2fd(c2_s_data, basis=bb ))
+
+
+par(mfrow=c(1,1))
 
 
 
-#Gets the AverageValue
-scalarExtract <- function(intervals, coeffs, basis ){
-  scalar_data = NULL
-  for (i in 1:(length(intervals)-1)) {
-    xvals = seq(by =0.01,from=intervals[i],to=intervals[i+1])
-    yvals = t(coeffs)%*%t(eval.basis(xvals, basis))
-    scalar_data = cbind(scalar_data,rowMeans(yvals) )
-  }
-  return(scalar_data)
-}
+################ Build Model
 
-
-#gets scalar extraction for M trees, each extraction is different interval
-m_MV_ScalarExtraction <- function(m, numInts, fp, theta=1, coeffs, basis){
-  m_scalar_data = array(dim = c(ncol(coeffs),numInts*fp,m))
-
-  rInts = NULL
-  ngrps = nrow(coeffs)/fp
-
-  for (j in 1:m) {
-    temp = randomInterval_normal(numInts,theta)
-    #print(temp)
-    temp_scalar = NULL
-    #For loop for each functional predictor
-    for (k in 0:(fp-1)) {
-      coef2 = coeffs[(1+ngrps*k):(ngrps*(k+1)), ]
-      temp2= scalarExtract(temp, coef2, basis)
-      temp_scalar=cbind(temp_scalar, temp2)
-    }
-
-    m_scalar_data[,,j]=temp_scalar
-    rInts = rbind(rInts, temp)
-
-
-  }
-  #Saves the intervals and the scalar data
-  ret=list()
-  ret[[1]] = m_scalar_data
-  ret[[2]] = rInts
-  return(ret)
-}
-
-
-plotFunctionInterval <- function(data, numInts, intervals, theta=1, obs=190, ylab = "X(t)", xlab = "t" ){
-  bb = create.bspline.basis(rangeval = c(0,0.2), norder=4)
-  discrete_data = NULL
-
-  plot(data, ylab = ylab, xlab = xlab)
-
-  ints2= intervals
-
-  for (i in 1:numInts) {
-    xvals = seq(by =0.01,from=ints2[i],to=ints2[i+1])
-    yvals = t(data$coefs)%*%t(eval.basis(xvals, data$basis))
-
-    points(x= xvals, y=yvals[obs,], col="darkgreen", pch=16)
-    meany = rep(mean(yvals[obs,]), length(xvals))
-    discrete_data = cbind(discrete_data,rowMeans(yvals) )
-
-    lines(x= xvals, y = meany, col="green", lwd=3)
-  }
-
-}
-
-######################################################################
-
-numInts=6
-ints2= randomInterval_normal(numInts, .1)
-
-#See the DATA with intervals
-par(mfrow=c(1,3))
-plotFunctionInterval(simData2[[1]], 6, ints2, 1, 10, ylab ="X_1(t)")
-plotFunctionInterval(simData2[[2]], 6, ints2, 1, 10, ylab ="X_2(t)")
-plotFunctionInterval(simData2[[3]], 6, ints2, 1, 10, ylab ="X_3(t)")
-
-# Rest to default
-dev.off()
-plotFunctionInterval(simData2[[1]], 6, ints2, 1, 10, ylab ="X_1(t)")
-plotFunctionInterval(simData2[[2]], 6, ints2, 1, 10, ylab ="X_2(t)")
-plotFunctionInterval(simData2[[3]], 6, ints2, 1, 10, ylab ="X_3(t)")
-
-#####################################################################
-######################################################################
-#Compare other models using intervals
-#Compare other models using intervals
 m=200
 num_predictors=8
 num_intervals = 6
 
 
+sD2coefs= rbind(sim_data_1, sim_data_2)
 
-sD2coefs= rbind(simData2[[1]]$coefs, simData2[[2]]$coefs, simData2[[3]]$coefs)
-
-for(i in 1:(num_predictors-3)){
-  noise1 = rnorm(prod(dim(simData2[[3]]$coefs)), sd=10)
-  dim(noise1) = dim(simData2[[3]]$coefs)
+for(i in 1:(num_predictors-2)){
+  noise1 = rnorm(prod(dim(sim_data_1)), sd=10)
+  dim(noise1) = dim(sim_data_1)
 
   sD2coefs= rbind(sD2coefs, noise1)
 }
 
 
 s_data_test = m_MV_ScalarExtraction(m, num_intervals, num_predictors,
-                                    1/num_intervals, sD2coefs, simData2[[3]]$basis)
-
-
+                                    1/num_intervals^2, sD2coefs, simData2[[3]]$basis)
 
 
 colors = rainbow(num_intervals)
-s_data_test[[2]][1,1:2]
-
 plot(rep(1,num_intervals+1) ~s_data_test[[2]][1,], cex=0,  ylim=c(0,21),
      ylab="Tree Number", xlab="Intervals on (t) grid",
      main="Intervals for each Tree for scalar extraction")
@@ -172,7 +115,7 @@ X=s_data_test[[1]][,,1]
 
 #Logistic regression
 
-cc = c(rep(0,100), rep(1,100))
+cc = c(rep(0,1000), rep(1,1000))
 
 #create Train and Test sets
 df= data.frame(interval=X, class = cc)
@@ -182,7 +125,7 @@ df = as_tibble(df)
 
 #use 50% of dataset as training set and 30% as test set
 set.seed(1)
-sample <- sample(c(TRUE, FALSE), nrow(df), replace=TRUE, prob=c(0.25,0.75))
+sample <- sample(c(TRUE, FALSE), nrow(df), replace=TRUE, prob=c(0.1,0.9))
 train  <- df[sample, ]
 test   <- df[!sample, ]
 
@@ -225,6 +168,7 @@ m3$prob.test
 m3$varcount.mean
 barplot(m3$varcount.mean)
 m3$varprob.mean
+barplot(m3$varprob.mean)
 
 m3$proc.time
 
@@ -315,7 +259,7 @@ keepevery=1L
 nkeeptrain=ndpost
 binaryOffset=qnorm(mean(y_train))
 iter=1000
-burn=100
+burn=1000
 
 #Priors
 alpha=0.95
@@ -344,7 +288,7 @@ b_int = 1
 rho_int = num_intervals
 aug_int = FALSE
 
-lambda=4^2
+lambda=4^3
 
 
 
@@ -372,48 +316,37 @@ r1 = functionalBART_res(newX, #input matrix of scalar extraction data
                         alpha,
                         beta,
                         tau,
-                                  #Functional Predictors
+                        #Functional Predictors
                         dart,
 
                         dart_fp,
                         theta_fp,
-                         omega_fp,
-                         a_fp,
-                         b_fp,
-                         rho_fp,
-                         aug_fp,
+                        omega_fp,
+                        a_fp,
+                        b_fp,
+                        rho_fp,
+                        aug_fp,
 
-                         dart_int,
-                         theta_int,
-                         omega_int,
-                         a_int,
-                         b_int,
-                         rho_int,
-                         aug_int
+                        dart_int,
+                        theta_int,
+                        omega_int,
+                        a_int,
+                        b_int,
+                        rho_int,
+                        aug_int
 )
 
 
 
+#r1$vp_funcP_Cube[,2,1]
 
-
-r1$vc_intvls_Cube[,,4]
-
-
-plot(r1$vc_intvls_Cube[,6,2])
-plot(r1$vc_intvls_Cube[,6,3])
-plot(r1$vc_intvls_Cube[,3,4])
-
+#plot(r1$vp_funcP_Cube[,7,4])
 
 par(mfrow=c(1,1))
 
-plot(r1$sigma_values, type ="l", main="Sigma value over iteration")
-abline(v=burn, col="red")
-r1$sigma_values[iter+burn]
-
-mean(r1$sigma_values)
-
-r1$vp_funcP_Cube
-r1$vc_funcP_Cube
+#plot(r1$sigma_values, type ="l", main="Sigma value over iteration")
+#abline(v=burn, col="red")
+#r1$sigma_values[iter+burn]
 
 y_out=0
 ytest_out=0
@@ -421,12 +354,12 @@ ytest_out=0
 prob_predictor = 0
 prob_interval=0
 for (i in 1:m) {
-  y_out=y_out+colSums(r1$yhatsCube[,,i])/iter
-  ytest_out=ytest_out+colSums(r1$yhatsCube_test[,,i])/iter
+  y_out=y_out+colMeans(r1$yhatsCube[,,i])
+  ytest_out=ytest_out+colMeans(r1$yhatsCube_test[,,i])
 
-  prob_predictor= prob_predictor + colSums(r1$vp_funcP_Cube[,,i])/iter
+  prob_predictor= prob_predictor + colMeans(r1$vp_funcP_Cube[,,i])
   #print( colSums(r1$vp_funcP_Cube[,,i])/iter )
-  prob_interval= prob_interval + colSums(r1$vp_intvls_Cube[,,i])/iter
+  prob_interval= prob_interval + colMeans(r1$vp_intvls_Cube[,,i])
 }
 
 
@@ -449,12 +382,12 @@ plot(pnorm(ytest_out), col="red",
 
 
 
-barplot(colSums(r1$vp_funcP)/sum(colSums(r1$vp_funcP)),
-        main="functional predictor probability")
+#barplot(colMeans(r1$vp_funcP) ,
+  #      main="functional predictor probability")
 
 
-barplot(colSums(r1$vp_intvls)/sum(colSums(r1$vp_intvls)),
-        main = "interval probability")
+#barplot(colMeans(r1$vp_intvls) ,
+#        main = "interval probability")
 
 
 
@@ -462,7 +395,12 @@ barplot(colSums(r1$vp_intvls)/sum(colSums(r1$vp_intvls)),
 
 ###############################################################
 ###############################################################
-# Differing Intervals
+# Functional Logistic Regression
+
+
+
+
+
 
 ###############################################################
 ###############################################################
@@ -535,11 +473,11 @@ get_grid_probabilites <- function(t_grid, interval, probs){
 
 
 get_grid_probabilites_M <- function(t_grid, interval, probs){
- ave_prob_grid = NULL
- for(i in 1:nrow(interval)){
-   ave_prob_grid =rbind( ave_prob_grid, get_grid_probabilites(t_grid,interval[i,], probs))
- }
- return(ave_prob_grid)
+  ave_prob_grid = NULL
+  for(i in 1:nrow(interval)){
+    ave_prob_grid =rbind( ave_prob_grid, get_grid_probabilites(t_grid,interval[i,], probs))
+  }
+  return(ave_prob_grid)
 }
 
 
@@ -551,4 +489,10 @@ abline(h=1/num_intervals)
 
 
 
+rowMeans(colMeans(r1$probcount))
+barplot(rowMeans(colMeans(r1$probcount)))
+barplot(rowMeans(colMeans(r1$varcount)))
 
+
+
+round(runif(200, min=1, max=10))

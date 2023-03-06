@@ -137,14 +137,6 @@ public:
    void predict(size_t p, size_t n, double *x, double *fp);
 
    void draw(size_t funcP, size_t intvls, double sigma, rn& gen, rn& gen_fp, rn& gen_int, std::vector<double> r_vector);
-   void draw_global(size_t funcP, size_t intvls, double sigma,
-                          rn& gen, rn& gen_fp, rn& gen_int,
-                          std::vector<double> r_vector, std::vector<size_t> global_nv);
-
-   void draw_global_int(size_t funcP, size_t intvls, double sigma,
-                    rn& gen, rn& gen_fp, rn& gen_int,
-                    std::vector<double> r_vector, std::vector<size_t> global_nv);
-
 //   void draw_s(rn& gen);
    double f(size_t i) {return allfit[i];}
 protected:
